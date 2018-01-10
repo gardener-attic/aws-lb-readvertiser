@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+# Copyright 2017 The Gardener Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -e
+
+VERSION=$( go version )
+
+# For development versions of Go, these will be empty.
+MAJOR_GOVERSION=$( echo -n "$VERSION" | grep -o 'go1\.[0-9]' || true )
+FULL_GOVERSION=$( echo -n "$VERSION" | grep -o 'go1\.[0-9|\.]*' || true )
+
+# The list of unsupported major go versions.
+UNSUPPORTED=( "go1.0" "go1.1" "go1.2" "go1.3" "go1.4" "go1.5" "go1.6" )
+
+# Minor go versions which have known security vulnerabilities. Refuse to build with these.
+#
+# There aren't any security issues that impact dex in 1.7 but minor versions should be
+# added here later if they do have issues.
+KNOWN_INSECURE=( )
+
+for V in "${UNSUPPORTED[@]}"; do
+    if [ "$V" = "$MAJOR_GOVERSION" ]; then
+        >&2 echo "ERROR: dex requires Go version 1.7+. Please update your Go installation: https://golang.org/dl/"
+        exit 2
+    fi
+done
+
+for V in "${KNOWN_INSECURE[@]}"; do
+    if [ "$V" = "$FULL_GOVERSION" ]; then
+        >&2 echo "Go version ${V} has known security vulnerabilities. Please update your Go version."
+        exit 2
+    fi
+done

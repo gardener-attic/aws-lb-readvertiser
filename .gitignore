@@ -1,0 +1,4 @@
+bin
+rel
+aws-lb-readvertiser
+.kube-secrets
