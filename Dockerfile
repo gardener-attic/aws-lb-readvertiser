@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.5
+FROM alpine:3.7
 
 RUN apk add --update bash curl
 
 ADD ./rel/bin/aws-lb-readvertiser /aws-lb-readvertiser
+
+WORKDIR /
 
 ENTRYPOINT ["/aws-lb-readvertiser"]
