@@ -16,13 +16,14 @@ VCS              := github.com
 ORGANIZATION     := gardener
 PROJECT          := aws-lb-readvertiser
 REPOSITORY       := $(VCS)/$(ORGANIZATION)/$(PROJECT)
-VERSION          := v0.0.2
+VERSION          := $(shell cat VERSION)
 LD_FLAGS         := "-w -X $(REPOSITORY)/pkg/version.Version=$(VERSION)"
 PACKAGES         := $(shell go list ./... | grep -v '/vendor/')
 REGISTRY         := eu.gcr.io/sap-cloud-platform-dev1
 IMAGE_REPOSITORY := $(REGISTRY)/garden/$(PROJECT)
 IMAGE_TAG        := $(VERSION)
 
+BIN_DIR          := bin
 GOBIN            := $(PWD)/bin
 PATH             := $(GOBIN):$(PATH)
 USER             :=  $(shell id -u -n)
@@ -35,28 +36,25 @@ verify: vet fmt lint test
 
 .PHONY: revendor
 revendor:
-	@glide up -v
-	@glide-vc --use-lock-file --no-tests --only-code
+	@dep ensure -update
+	@dep prune
+
 
 .PHONY: build
-build: bin/aws-lb-readvertiser
+build:
+	@go build -o $(BIN_DIR)/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
 
 .PHONY: release
-release: build docker-build docker-image docker-login docker-push rename-binaries clean
-
-bin/aws-lb-readvertiser: check-go-version
-	@go install -v -ldflags $(LD_FLAGS) $(REPOSITORY)/
+release: build docker-build docker-image docker-login docker-push rename-binaries
 
 .PHONY: build-release
 build-release:
-	@go build -o /go/bin/aws-lb-readvertiser -v -ldflags $(LD_FLAGS) $(REPOSITORY)/
+	@go build -o /go/bin/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
 
 .PHONY: docker-build
-docker-build: rel/bin/aws-lb-readvertiser
-
-rel/bin/aws-lb-readvertiser:
-	@./scripts/build-release
-	@sudo chown $(user):$(group) rel/bin/aws-lb-readvertiser
+docker-build:
+	@./hack/build-release
+	@sudo chown $(user):$(group) $(BIN_DIR)/rel/aws-lb-readvertiser
 
 .PHONY: docker-image
 docker-image:
@@ -74,8 +72,15 @@ docker-push:
 
 .PHONY: rename-binaries
 rename-binaries:
-	@cp bin/aws-lb-readvertiser aws-lb-readvertiser-darwin-amd64
-	@cp rel/bin/aws-lb-readvertiser aws-lb-readvertiser-linux-amd64
+	@if [[ -f $(BIN_DIR)/aws-lb-readvertiser ]]; then cp $(BIN_DIR)/aws-lb-readvertiser aws-lb-readvertiser-darwin-amd64; fi
+	@if [[ -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then cp $(BIN_DIR)/rel/aws-lb-readvertiser aws-lb-readvertiser-linux-amd64; fi
+
+
+.PHONY: clean
+clean:
+	@rm -rf $(BIN_DIR)/
+	@rm -f *linux-amd64
+	@rm -f *darwin-amd64
 
 .PHONY: fmt
 fmt:
@@ -88,18 +93,9 @@ vet:
 .PHONY: lint
 lint:
 	@for package in $(PACKAGES); do \
-		golint -set_exit_status $$package $$i || exit 1; \
+		golint -set_exit_status $$(find $$package -maxdepth 1 -name "*.go" | grep -vE 'zz_generated|_test.go') || exit 1; \
 	done
 
 .PHONY: test
 test:
-	@go test $(PACKAGES)
-
-.PHONY: check-go-version
-check-go-version:
-	@./scripts/check-go-version
-
-.PHONY: clean
-clean:
-	@rm -rf bin/
-	@rm -rf rel/
+	@ginkgo -r pkg

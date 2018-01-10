@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -e
 #
 # Copyright 2017 The Gardener Authors.
 #
@@ -14,26 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+REL_DIR="$(dirname $0)/../bin/rel"
+REPOSITORY="github.com/gardener/aws-lb-readvertiser"
+BINARY="aws-lb-readvertiser"
 
-# Since this script will be run in a rkt container, use "/bin/sh" instead of "/bin/bash"
+mkdir -p $REL_DIR
 
-# parse the current git commit hash
-COMMIT=`git rev-parse HEAD`
+sudo docker run \
+    --cidfile=$BINARY-cid \
+    -v $PWD:/go/src/$REPOSITORY:ro \
+    -w /go/src/$REPOSITORY \
+    golang:1.9.2-alpine3.7 \
+    /bin/sh -x -c \
+    'apk add --no-cache --update alpine-sdk && make build-release'
 
-# check if the current commit has a matching tag
-TAG=$(git describe --exact-match --abbrev=0 --tags ${COMMIT} 2> /dev/null || true)
-
-# use the matching tag as the version, if available
-if [ -z "$TAG" ]; then
-    VERSION=$COMMIT
-else
-    VERSION=$TAG
-fi
-
-# check for changed files (not untracked files)
-if [ -n "$(git diff --shortstat 2> /dev/null | tail -n1)" ]; then
-    VERSION="${VERSION}-dirty"
-fi
-
-echo $VERSION
+sudo docker cp $(cat $BINARY-cid):/go/bin/$BINARY $REL_DIR/$BINARY
+sudo docker rm $(cat $BINARY-cid)
+sudo rm $BINARY-cid

@@ -8,7 +8,7 @@ The `kube-apiserver` deployment must reside in the same namespace as the Readver
 
 ## How to build it?
 
-:warning: Please don't forget to update the `$VERSION` variable in the `Makefile` before creating a new release:
+:warning: Please don't forget to update the content of the `VERSION` file before creating a new release:
 
 ```bash
 $ make release
