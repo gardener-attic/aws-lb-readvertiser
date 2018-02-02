@@ -78,7 +78,7 @@ spec:
         operator: Exists
       containers:
       - name: readvertiser
-        image: eu.gcr.io/sap-cloud-platform-dev1/garden/aws-lb-readvertiser:v0.0.2
+        image: eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser:v0.0.2
         imagePullPolicy: IfNotPresent
         args:
         - "--name=kube-apiserver"

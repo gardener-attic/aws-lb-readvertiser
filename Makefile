@@ -19,8 +19,8 @@ REPOSITORY       := $(VCS)/$(ORGANIZATION)/$(PROJECT)
 VERSION          := $(shell cat VERSION)
 LD_FLAGS         := "-w -X $(REPOSITORY)/pkg/version.Version=$(VERSION)"
 PACKAGES         := $(shell go list ./... | grep -v '/vendor/')
-REGISTRY         := eu.gcr.io/sap-cloud-platform-dev1
-IMAGE_REPOSITORY := $(REGISTRY)/garden/$(PROJECT)
+REGISTRY         := eu.gcr.io/gardener-project/gardener
+IMAGE_REPOSITORY := $(REGISTRY)/$(PROJECT)
 IMAGE_TAG        := $(VERSION)
 
 BIN_DIR          := bin
@@ -45,20 +45,15 @@ build:
 	@go build -o $(BIN_DIR)/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
 
 .PHONY: release
-release: build docker-build docker-image docker-login docker-push rename-binaries
+release: build build-release docker-image docker-login docker-push rename-binaries
 
 .PHONY: build-release
 build-release:
-	@go build -o /go/bin/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
-
-.PHONY: docker-build
-docker-build:
-	@./hack/build-release
-	@sudo chown $(user):$(group) $(BIN_DIR)/rel/aws-lb-readvertiser
+	@env GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/rel/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
 
 .PHONY: docker-image
 docker-image:
-	@if [[ ! -f rel/bin/aws-lb-readvertiser ]]; then echo "No binary found. Please run 'make docker-build'"; false; fi
+	@if [[ ! -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then echo "No binary found. Please run 'make build-release'"; false; fi
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) --rm .
 
 .PHONY: docker-login

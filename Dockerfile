@@ -16,7 +16,7 @@ FROM alpine:3.7
 
 RUN apk add --update bash curl
 
-ADD ./rel/bin/aws-lb-readvertiser /aws-lb-readvertiser
+ADD ./bin/rel/aws-lb-readvertiser /aws-lb-readvertiser
 
 WORKDIR /
 
