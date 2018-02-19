@@ -31,29 +31,28 @@ USER             :=  $(shell id -u -n)
 export PATH
 export GOBIN
 
-.PHONY: verify
-verify: vet fmt lint test
+#################################################################
+# Rules related to binary build, Docker image build and release #
+#################################################################
 
 .PHONY: revendor
 revendor:
 	@dep ensure -update
-	@dep prune
-
 
 .PHONY: build
 build:
-	@go build -o $(BIN_DIR)/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
+	@.ci/build
+
+.PHONY: build-local
+build-local:
+	@env LOCAL_BUILD=1 .ci/build
 
 .PHONY: release
-release: build build-release docker-image docker-login docker-push rename-binaries
-
-.PHONY: build-release
-build-release:
-	@env GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/rel/aws-lb-readvertiser $(GO_EXTRA_FLAGS) -ldflags $(LD_FLAGS) main.go
+release: build build-local docker-image docker-login docker-push rename-binaries
 
 .PHONY: docker-image
 docker-image:
-	@if [[ ! -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then echo "No binary found. Please run 'make build-release'"; false; fi
+	@if [[ ! -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then echo "No binary found. Please run 'make build'"; false; fi
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) --rm .
 
 .PHONY: docker-login
@@ -70,27 +69,19 @@ rename-binaries:
 	@if [[ -f $(BIN_DIR)/aws-lb-readvertiser ]]; then cp $(BIN_DIR)/aws-lb-readvertiser aws-lb-readvertiser-darwin-amd64; fi
 	@if [[ -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then cp $(BIN_DIR)/rel/aws-lb-readvertiser aws-lb-readvertiser-linux-amd64; fi
 
-
 .PHONY: clean
 clean:
 	@rm -rf $(BIN_DIR)/
 	@rm -f *linux-amd64
 	@rm -f *darwin-amd64
 
-.PHONY: fmt
-fmt:
-	@go fmt $(PACKAGES)
+#####################################################################
+# Rules for verification, formatting, linting, testing and cleaning #
+#####################################################################
 
-.PHONY: vet
-vet:
-	@go vet $(PACKAGES)
+.PHONY: verify
+verify: check
 
-.PHONY: lint
-lint:
-	@for package in $(PACKAGES); do \
-		golint -set_exit_status $$(find $$package -maxdepth 1 -name "*.go" | grep -vE 'zz_generated|_test.go') || exit 1; \
-	done
-
-.PHONY: test
-test:
-	@ginkgo -r pkg
+.PHONY: check
+check:
+	@.ci/check
