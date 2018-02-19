@@ -12,24 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-VCS              := github.com
-ORGANIZATION     := gardener
-PROJECT          := aws-lb-readvertiser
-REPOSITORY       := $(VCS)/$(ORGANIZATION)/$(PROJECT)
-VERSION          := $(shell cat VERSION)
-LD_FLAGS         := "-w -X $(REPOSITORY)/pkg/version.Version=$(VERSION)"
-PACKAGES         := $(shell go list ./... | grep -v '/vendor/')
-REGISTRY         := eu.gcr.io/gardener-project/gardener
-IMAGE_REPOSITORY := $(REGISTRY)/$(PROJECT)
-IMAGE_TAG        := $(VERSION)
-
-BIN_DIR          := bin
-GOBIN            := $(PWD)/bin
-PATH             := $(GOBIN):$(PATH)
-USER             :=  $(shell id -u -n)
-
-export PATH
-export GOBIN
+IMAGE_REPOSITORY := eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser
+IMAGE_TAG        := $(shell cat VERSION)
 
 #################################################################
 # Rules related to binary build, Docker image build and release #
@@ -52,7 +36,7 @@ release: build build-local docker-image docker-login docker-push rename-binaries
 
 .PHONY: docker-image
 docker-image:
-	@if [[ ! -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then echo "No binary found. Please run 'make build'"; false; fi
+	@if [[ ! -f bin/rel/aws-lb-readvertiser ]]; then echo "No binary found. Please run 'make build'"; false; fi
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) --rm .
 
 .PHONY: docker-login
@@ -66,12 +50,12 @@ docker-push:
 
 .PHONY: rename-binaries
 rename-binaries:
-	@if [[ -f $(BIN_DIR)/aws-lb-readvertiser ]]; then cp $(BIN_DIR)/aws-lb-readvertiser aws-lb-readvertiser-darwin-amd64; fi
-	@if [[ -f $(BIN_DIR)/rel/aws-lb-readvertiser ]]; then cp $(BIN_DIR)/rel/aws-lb-readvertiser aws-lb-readvertiser-linux-amd64; fi
+	@if [[ -f bin/aws-lb-readvertiser ]]; then cp bin/aws-lb-readvertiser aws-lb-readvertiser-darwin-amd64; fi
+	@if [[ -f bin/rel/aws-lb-readvertiser ]]; then cp bin/rel/aws-lb-readvertiser aws-lb-readvertiser-linux-amd64; fi
 
 .PHONY: clean
 clean:
-	@rm -rf $(BIN_DIR)/
+	@rm -rf bin/
 	@rm -f *linux-amd64
 	@rm -f *darwin-amd64
 
