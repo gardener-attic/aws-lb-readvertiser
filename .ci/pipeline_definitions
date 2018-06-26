@@ -34,3 +34,5 @@ aws-lb-readvertiser:
           preprocess: 'finalise'
         release:
           nextversion: 'bump_minor'
+        component_descriptor:
+          component_name: 'github.com/gardener/aws-lb-readvertiser'
