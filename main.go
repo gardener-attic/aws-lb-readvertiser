@@ -15,94 +15,119 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"net"
 	"os"
-	"strings"
+	"os/signal"
+	"syscall"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/gardener/aws-lb-readvertiser/controller"
+
+	"k8s.io/client-go/informers"
+
+	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-func main() {
-	name := flag.String("name", "kube-apiserver", "name of deployment")
-	elb := flag.String("elb", "", "dns name of elb")
+// AWSReadvertiserOptions are the options for the AWSReadvertiser
+type AWSReadvertiserOptions struct {
+	endpointName           string
+	kubeconfig             string
+	elb                    string
+	refreshPeriod          int
+	controllerResyncPeriod int
+}
+
+func (a *AWSReadvertiserOptions) addFlags() {
+	flag.StringVar(&a.kubeconfig, "kubeconfig", "", "kubeconfig")
+	flag.StringVar(&a.elb, "elb-dns-name", "", "DNS name of elb")
+	flag.IntVar(&a.refreshPeriod, "refresh-period", 5, "the period at which the Loadbalancer value is checked (in seconds)")
+	flag.IntVar(&a.controllerResyncPeriod, "resync-period", 30, "the period at which the controller sync with the cache will happen (in seconds)")
+
 	flag.Parse()
+}
 
-	// checks
-	if len(*elb) == 0 {
-		panic("--elb is not set")
-	}
-	namespace, exists := os.LookupEnv("NAMESPACE")
-	if !exists {
-		panic("NAMESPACE env variable not set")
+func (a *AWSReadvertiserOptions) validateFlags() error {
+	if len(a.elb) == 0 {
+		return fmt.Errorf("The DNS value for the ELB needs to be set properly")
 	}
 
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+	if a.refreshPeriod == 0 {
+		log.Infof("The referesh period was not set, using default %d", a.refreshPeriod)
+		return nil
+	}
+
+	if a.controllerResyncPeriod == 0 {
+		log.Infof("The controller resync period was not set, using default %d", a.controllerResyncPeriod)
+	}
+
+	return nil
+}
+
+func (a *AWSReadvertiserOptions) initializeClient() (*kubernetes.Clientset, error) {
+	var config *rest.Config
+
+	switch {
+	case len(a.kubeconfig) != 0:
+		log.Infof("Using config from flag --kubeconfig %q", a.kubeconfig)
+	default:
+		a.kubeconfig, _ = os.LookupEnv("KUBECONFIG")
+		log.Infof("Using config from $KUBECONFIG %q", a.kubeconfig)
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", a.kubeconfig)
 	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
-	for {
-		var containerIndex int
-		var cmdIndex int
-		var needUpdate = true
-		// lookup elb dns name
-		nsRecords, err := net.LookupHost(*elb)
-		if err != nil {
-			fmt.Printf("%s warning: could not resolve the dns name of the elb: %v\n", time.Now(), err)
-		} else {
-			// get deployment
-			deployment, err := clientset.ExtensionsV1beta1().Deployments(namespace).Get(*name, metav1.GetOptions{})
-			if err != nil {
-				fmt.Printf("%s error: could not get deployment manifest of apiserver, but an error occurred: %v\n", time.Now(), err)
-			}
-			for i, container := range deployment.Spec.Template.Spec.Containers {
-				if container.Name == "kube-apiserver" {
-					containerIndex = i
-					for j, cmd := range container.Command {
-						split := strings.Split(cmd, "=")
-						if split[0] == "--advertise-address" {
-							cmdIndex = j
-							ip := split[1]
-							for _, record := range nsRecords {
-								if ip == record {
-									needUpdate = false
-								}
-							}
-						}
-					}
-				}
-			}
+	return kubernetes.NewForConfig(config)
+}
 
-			// update deployment if needed
-			if needUpdate {
-				newIP := nsRecords[0]
-				fmt.Printf("%s need to update the advertise-address, use %s", time.Now(), newIP)
-				deployment.
-					Spec.
-					Template.
-					Spec.
-					Containers[containerIndex].
-					Command[cmdIndex] = fmt.Sprintf("--advertise-address=%s", newIP)
-				fmt.Printf("%s Sending deployment to apiserver: %v", time.Now(), deployment)
-				_, err := clientset.ExtensionsV1beta1().Deployments(namespace).Update(deployment)
-				if err != nil {
-					fmt.Printf("%s error: wanted to update the deployment, but an error occurred: %v\n", time.Now(), err)
-				} else {
-					fmt.Println(time.Now(), "\nsent manifest to apiserver successfully")
-				}
-			}
+func (a *AWSReadvertiserOptions) run(ctx context.Context, client kubernetes.Interface) {
+	var (
+		sharedInformers             = informers.NewSharedInformerFactory(client, time.Duration(a.controllerResyncPeriod)*time.Second)
+		awsLBReadvertiserController = controller.NewAWSLBEndpointsController(client, sharedInformers.Core().V1().Endpoints(), a.elb, "kubernetes")
+		refreshTicker               = time.NewTicker(time.Duration(a.refreshPeriod) * time.Second)
+	)
+
+	go sharedInformers.Start(ctx.Done())
+	awsLBReadvertiserController.Run(ctx, refreshTicker)
+}
+
+func main() {
+	awsReadvertiser := new(AWSReadvertiserOptions)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	defer func() {
+		signal.Stop(signalChan)
+		cancel()
+	}()
+
+	go func() {
+		select {
+		case sig := <-signalChan:
+			log.Printf("received signal: %s", sig.String())
+			cancel()
+		case <-ctx.Done():
 		}
-		time.Sleep(5 * time.Second)
+	}()
+
+	awsReadvertiser.addFlags()
+	if err := awsReadvertiser.validateFlags(); err != nil {
+		log.Fatalf("Invalid flags, reason: %+v", err)
 	}
+
+	client, err := awsReadvertiser.initializeClient()
+	if err != nil {
+		log.Fatalf("failed to initialize client, error: %+v", err)
+	}
+
+	awsReadvertiser.run(ctx, client)
 }
