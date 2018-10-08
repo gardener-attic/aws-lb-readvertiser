@@ -16,75 +16,89 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: readvertiser
+  name: aws-lb-readvertiser
   namespace: default
   labels:
-    app: readvertiser
+    app: aws-lb-readvertiser
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: readvertiser
+  name: aws-lb-readvertiser
   labels:
-    app: readvertiser
+    app: aws-lb-readvertiser
 rules:
 - apiGroups:
-  - extensions
-  - apps
+  - ""
   resources:
-  - deployments
+  - endpoints
   resourceNames:
-  - kube-apiserver
+  - kubernetes
   verbs:
+  - create
   - get
   - update
+  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
     app: readvertiser
-  name: readvertiser
+  name: aws-lb-readvertiser
   namespace: default
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: readvertiser
+  name: aws-lb-readvertiser
 subjects:
 - kind: ServiceAccount
-  name: readvertiser
+  name: aws-lb-readvertiser
   namespace: default
 ---
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
-  name: readvertiser
+  name: aws-lb-readvertiser
   namespace: default
   labels:
-    app: readvertiser
+    app: kubernetes
+    role: controller-manager
 spec:
-  replicas: 1
+  revisionHistoryLimit: 0
+  replicas: default
   selector:
     matchLabels:
-      app: readvertiser
+      app: aws-lb-readvertiser
   template:
     metadata:
       labels:
-        app: readvertiser
+        app: aws-lb-readvertiser
     spec:
-      serviceAccountName: readvertiser
+      serviceAccountName: aws-lb-readvertiser
       tolerations:
       - effect: NoExecute
         operator: Exists
       containers:
-      - name: readvertiser
-        image: eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser:v0.0.2
+      - name: aws-lb-readvertiser
+        image: eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser:0.4.0
         imagePullPolicy: IfNotPresent
         args:
-        - "--name=kube-apiserver"
-        - "--elb=api.example.com"
-        env:
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+        - --kubeconfig=/var/lib/aws-lb-readvertiser/kubeconfig
+        - --elb-dns-name=api.example.com
+        - --endpoint-name=kubernetes
+        - --refresh-period=5
+        resources:
+          requests:
+            cpu: 5m
+            memory: 10Mi
+          limits:
+            cpu: 20m
+            memory: 20Mi
+        volumeMounts:
+        - name: aws-lb-readvertiser
+          mountPath: /var/lib/aws-lb-readvertiser
+      volumes:
+      - name: aws-lb-readvertiser
+        secret:
+          secretName: aws-lb-readvertiser
