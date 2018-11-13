@@ -20,7 +20,7 @@ func checkEndpointIsStillValid(currentEndpointValues []string, elbFetchedRecords
 }
 
 // createEndpointSubset creates an endpoint subset from a set of IPs and currently with a constant port 443
-func createEndpointSubsetFromRecords(ips []string) (*corev1.EndpointSubset, error) {
+func createEndpointSubsetObjectFromRecords(ips []string) (*corev1.EndpointSubset, error) {
 	if len(ips) == 0 {
 		return nil, errors.New("Empty list of IPs")
 	}

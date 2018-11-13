@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"time"
 
@@ -48,6 +49,40 @@ func NewAWSLBEndpointsController(client kubernetes.Interface, endpointsInformer 
 	return awsLBReadvertiserController
 }
 
+func (c *AWSLBReadvertiserController) createTwoWayEndpointMergePatch(endpoint *corev1.Endpoints, dnsRecords []string) (*corev1.EndpointSubset, error) {
+	endpointCopy := endpoint.DeepCopy()
+
+	endpoints, err := createEndpointSubsetObjectFromRecords(dnsRecords)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to update endpoint")
+	}
+
+	// Set Subset to new endpoint IPs
+	endpointCopy.Subsets = []corev1.EndpointSubset{*endpoints}
+
+	// start the update process with Kubernetes
+	oldEndpoint, err := json.Marshal(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal old endpoint")
+	}
+
+	newEndPoint, err := json.Marshal(endpointCopy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal new endpoint")
+	}
+
+	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldEndpoint, newEndPoint, corev1.Endpoints{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to patch bytes")
+	}
+
+	_, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Patch(endpoint.Name, types.StrategicMergePatchType, patchBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update endpoint with new value: %s", err.Error())
+	}
+	return endpoints, nil
+}
+
 //Run the AWSLBReconciler
 func (c *AWSLBReadvertiserController) Run(ctx context.Context, refreshTicker *time.Ticker) {
 	defer func() {
@@ -80,85 +115,81 @@ func (c *AWSLBReadvertiserController) Run(ctx context.Context, refreshTicker *ti
 			log.Printf("DNS lookup results are: %s", dnsRecords)
 
 			endpoint, err := c.endpointsLister.Endpoints(metav1.NamespaceDefault).Get(endpointName)
+			createEndpoint := func() error {
+				endpointSubset, err := createEndpointSubsetObjectFromRecords(dnsRecords)
+				if err != nil {
+					return fmt.Errorf("%s warning: could not resolve the DNS name of the elb: %v", time.Now(), err)
+				}
+
+				endpoint, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Create(&corev1.Endpoints{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: endpointName,
+					},
+					Subsets: []corev1.EndpointSubset{*endpointSubset},
+				})
+				if err != nil {
+					return fmt.Errorf("%s warning: could not create the kubernetes endpoint : %v", time.Now(), err)
+				}
+
+				return nil
+			}
+
 			if err != nil {
 				// Check if the endpoint is there and create it if its not
 				if errors.IsNotFound(err) {
 					log.Infof("The default %q endpoint was not found, creating it now", "kubernetes")
-
-					endpointSubset, err := createEndpointSubsetFromRecords(dnsRecords)
-					if err != nil {
-						log.Errorf("%s warning: could not resolve the DNS name of the elb: %v\n", time.Now(), err)
+					if err := createEndpoint(); err != nil {
+						log.Error(err)
 						break
 					}
-					endpoint, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Create(&corev1.Endpoints{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: endpointName,
-						},
-						Subsets: []corev1.EndpointSubset{*endpointSubset},
-					})
-					if err != nil {
-						log.Errorf("%s warning: could not create the kubernetes endpoint : %v\n", time.Now(), err)
-					}
+				} else {
+					log.Errorf("%s error: could not get endpoint, an error occurred: %v\n", time.Now(), err)
+					break
+				}
+			}
+
+			// handle the case where endpoint exists but has no subsets
+			if len(endpoint.Subsets) == 0 {
+				log.Infof("Found empty %s endpoint, adding correct LB IPs", endpointName)
+				endpoints, err := c.createTwoWayEndpointMergePatch(endpoint, dnsRecords)
+				if err != nil {
+					log.Error(err)
+					break
+				}
+				newEndpointAddresses, err := fetchEndpointIPsFromAddresses(endpoints.Addresses)
+				if err != nil {
+					log.Error("Endpoint subset has empty IPs")
+				}
+				log.Infof("New endpoint IPs are %q, ELB IPs are %s", newEndpointAddresses, dnsRecords)
+			} else {
+				// Endpoint exists but with the possiblity of outdated IPs
+				endpointIPs, err = fetchEndpointIPsFromAddresses(endpoint.Subsets[0].Addresses)
+				if err != nil {
+					log.Error(err)
+					break
+				}
+				log.Infof("Kubernetes Endpoint IPs : %q", endpointIPs)
+
+				// Check validity of endpoint and change respectively
+				if checkEndpointIsStillValid(endpointIPs, dnsRecords) {
+					log.Info("Nothing to be done")
 					break
 				}
 
-				log.Errorf("%s error: could not get endpoint, an error occurred: %v\n", time.Now(), err)
-				break
+				log.Info("ELB records changed, reconciling cluster endpoint to match")
+
+				endpoints, err := c.createTwoWayEndpointMergePatch(endpoint, dnsRecords)
+				if err != nil {
+					log.Error(err)
+					break
+				}
+
+				newEndpointAddresses, err := fetchEndpointIPsFromAddresses(endpoints.Addresses)
+				if err != nil {
+					log.Error("Endpoint subset has empty IPs")
+				}
+				log.Infof("Old endpoint IPs are %q, new endpoint IPs are %q, ELB IPs are %s", endpointIPs, newEndpointAddresses, dnsRecords)
 			}
-
-			endpointIPs, err = fetchEndpointIPsFromAddresses(endpoint.Subsets[0].Addresses)
-			if err != nil {
-				log.Error(err)
-				break
-			}
-			log.Infof("Kubernetes Endpoint IPs : %q", endpointIPs)
-
-			// Check validity of endpoint and change respectively
-			if checkEndpointIsStillValid(endpointIPs, dnsRecords) {
-				log.Info("Nothing to be done")
-				break
-			}
-
-			log.Info("ELB records changed, reconciling cluster endpoint to match")
-
-			endpointCopy := endpoint.DeepCopy()
-
-			endpoints, err := createEndpointSubsetFromRecords(dnsRecords)
-			if err != nil {
-				log.Errorf("Failed to update endpoint")
-				break
-			}
-
-			// Set Subset to new endpoint IPs
-			endpointCopy.Subsets[0] = *endpoints
-
-			// start the update process with Kubernetes
-			oldEndpoint, err := json.Marshal(endpoint)
-			if err != nil {
-				log.Errorf("Failed to marshal old endpoint")
-				break
-			}
-
-			newEndPoint, err := json.Marshal(endpointCopy)
-			if err != nil {
-				log.Error("failed to marshal new endpoint")
-				break
-			}
-
-			patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldEndpoint, newEndPoint, corev1.Endpoints{})
-			if err != nil {
-				log.Error("failed to patch bytes")
-				break
-			}
-
-			_, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Patch(endpoint.Name, types.StrategicMergePatchType, patchBytes)
-			if err != nil {
-				log.Errorf("failed to update endpoint with new value: %s", err.Error())
-				break
-			}
-
-			newEndpointAddresses, _ := fetchEndpointIPsFromAddresses(endpoints.Addresses)
-			log.Infof("Old endpoint IPs are %q, new endpoint IPs are %q, ELB IPs are %s", endpointIPs, newEndpointAddresses, dnsRecords)
 
 		case <-ctx.Done():
 			refreshTicker.Stop()
