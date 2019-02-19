@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -54,6 +55,11 @@ func (a *AWSReadvertiserOptions) addFlags() {
 func (a *AWSReadvertiserOptions) validateFlags() error {
 	if len(a.elb) == 0 {
 		return fmt.Errorf("The DNS value for the ELB needs to be set properly")
+	}
+
+	// Check to see if the domain is a valid FQDN
+	if !strings.HasSuffix(a.elb, ".") {
+		a.elb = fmt.Sprintf("%s.", a.elb)
 	}
 
 	if a.refreshPeriod == 0 {
