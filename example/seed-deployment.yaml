@@ -31,14 +31,20 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - endpoints
+  - services
   resourceNames:
-  - kubernetes
+  - kube-apiserver
+  verbs:
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
   verbs:
   - create
-  - get
-  - update
-  - patch
+
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -56,7 +62,7 @@ subjects:
   name: aws-lb-readvertiser
   namespace: default
 ---
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: aws-lb-readvertiser
@@ -79,15 +85,20 @@ spec:
       tolerations:
       - effect: NoExecute
         operator: Exists
+      env:
+      - name: SERVICE_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
       containers:
       - name: aws-lb-readvertiser
-        image: eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser:0.4.0
+        image: eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser:0.7.0
         imagePullPolicy: IfNotPresent
         args:
-        - --kubeconfig=/var/lib/aws-lb-readvertiser/kubeconfig
-        - --elb-dns-name=api.example.com
-        - --endpoint-name=kubernetes
-        - --refresh-period=5
+        - --kubeconfig=/var/lib/seed/kubeconfig
+        - --shoot-kubeconfig=/var/lib/shoot/kubeconfig
+        - --service-name=kube-apiserver
+        - --hostname-refresh-period=30s
         resources:
           requests:
             cpu: 5m
@@ -96,9 +107,14 @@ spec:
             cpu: 20m
             memory: 20Mi
         volumeMounts:
-        - name: aws-lb-readvertiser
-          mountPath: /var/lib/aws-lb-readvertiser
+        - name: seed
+          mountPath: /var/lib/seed
+        - name: shoot
+          mountPath: /var/lib/shoot
       volumes:
-      - name: aws-lb-readvertiser
+      - name: seed
         secret:
-          secretName: aws-lb-readvertiser
+          secretName: seed
+      - name: shoot
+        secret:
+          secretName: shoot
