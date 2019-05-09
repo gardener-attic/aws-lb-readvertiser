@@ -57,21 +57,21 @@ type Controller struct {
 func NewReconciler(
 	client endpointsclient.EndpointsInterface,
 	recorder record.EventRecorder,
-	sl listerv1.ServiceNamespaceLister,
-	epl listerv1.EndpointsNamespaceLister,
+	serviceLister listerv1.ServiceNamespaceLister,
+	endpointLister listerv1.EndpointsNamespaceLister,
 	svc string,
 	endpoint types.NamespacedName,
-	rh time.Duration,
+	resyncHostNameDuration time.Duration,
 	rsvr resolver.Resolver) reconcile.Reconciler {
 	return &Controller{
 		Endpoint:        endpoint,
-		EndpointLister:  epl,
+		EndpointLister:  endpointLister,
 		Log:             logf.Log.WithName("controller.readvertser"),
 		Recorder:        recorder,
 		Resolver:        rsvr,
-		ResyncHostnames: rh,
+		ResyncHostnames: resyncHostNameDuration,
 		Service:         svc,
-		ServiceLister:   sl,
+		ServiceLister:   serviceLister,
 		EndpointsClient: client,
 	}
 }
@@ -80,18 +80,17 @@ func NewReconciler(
 // endpoint in the Shoot cluster.
 func (c *Controller) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log := c.Log.WithValues("request", request)
-	hasHostnames := false
 
-	log.Info("reconciling")
-	defer log.Info("reconile done")
+	log.Info("reconciling Shoot endpoint with Service LB IP")
+	defer log.Info("reconcile done")
 	// controller-runtime's cache client is only limited to 1 cluster.
 	service, err := c.ServiceLister.Get(c.Service)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("does not exists, skipping", "service", c.Service)
-			return c.result(hasHostnames, nil)
+			return c.result(false, nil)
 		}
-		return c.result(hasHostnames, err)
+		return c.result(false, err)
 	}
 
 	endpoint, err := c.EndpointLister.Get(c.Endpoint.Name)
@@ -174,26 +173,4 @@ func (c *Controller) resolveIPs(s *corev1.Service) (sets.String, bool, error) {
 		}
 	}
 	return ips, hasHostnames, nil
-}
-
-func toEndPointSubsets(s *corev1.Service, ips sets.String) []corev1.EndpointSubset {
-	ep := make([]corev1.EndpointPort, 0, len(s.Spec.Ports))
-	epAddrs := make([]corev1.EndpointAddress, 0, ips.Len())
-	for _, p := range s.Spec.Ports {
-		ep = append(ep, corev1.EndpointPort{Name: p.Name, Port: p.Port, Protocol: p.Protocol})
-	}
-	for _, ip := range ips.List() {
-		epAddrs = append(epAddrs, corev1.EndpointAddress{IP: ip})
-	}
-	return []corev1.EndpointSubset{corev1.EndpointSubset{Addresses: epAddrs, Ports: ep}}
-}
-
-func toIPs(e *corev1.Endpoints) sets.String {
-	ip := sets.String{}
-	for _, subset := range e.Subsets {
-		for _, addr := range subset.Addresses {
-			ip.Insert(addr.IP)
-		}
-	}
-	return ip
 }

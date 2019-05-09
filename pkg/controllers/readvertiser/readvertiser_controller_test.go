@@ -330,16 +330,16 @@ var _ = Describe("Reconcile", func() {
 							ObjectMeta: metav1.ObjectMeta{Name: serviceName, Namespace: serviceNamespace},
 							Spec: corev1.ServiceSpec{
 								Ports: []corev1.ServicePort{
-									corev1.ServicePort{Name: "https", Port: 8443, Protocol: corev1.ProtocolTCP},
-									corev1.ServicePort{Name: "http", Port: 8080, Protocol: corev1.ProtocolUDP},
+									{Name: "https", Port: 8443, Protocol: corev1.ProtocolTCP},
+									{Name: "http", Port: 8080, Protocol: corev1.ProtocolUDP},
 								},
 							},
 							Status: corev1.ServiceStatus{
 								LoadBalancer: corev1.LoadBalancerStatus{
 									Ingress: []corev1.LoadBalancerIngress{
-										corev1.LoadBalancerIngress{Hostname: "foo.com"},
-										corev1.LoadBalancerIngress{IP: "8.8.8.8"},
-										corev1.LoadBalancerIngress{IP: "8.8.4.4"},
+										{Hostname: "foo.com"},
+										{IP: "8.8.8.8"},
+										{IP: "8.8.4.4"},
 									},
 								},
 							},
@@ -350,14 +350,14 @@ var _ = Describe("Reconcile", func() {
 							Subsets: []corev1.EndpointSubset{corev1.EndpointSubset{
 								Addresses: []corev1.EndpointAddress{
 									// Services should be ordered by address
-									corev1.EndpointAddress{IP: "1.1.1.1"},
-									corev1.EndpointAddress{IP: "2.2.2.2"},
-									corev1.EndpointAddress{IP: "8.8.4.4"},
-									corev1.EndpointAddress{IP: "8.8.8.8"},
+									{IP: "1.1.1.1"},
+									{IP: "2.2.2.2"},
+									{IP: "8.8.4.4"},
+									{IP: "8.8.8.8"},
 								},
 								Ports: []corev1.EndpointPort{
-									corev1.EndpointPort{Name: "https", Port: 8443, Protocol: corev1.ProtocolTCP},
-									corev1.EndpointPort{Name: "http", Port: 8080, Protocol: corev1.ProtocolUDP},
+									{Name: "https", Port: 8443, Protocol: corev1.ProtocolTCP},
+									{Name: "http", Port: 8080, Protocol: corev1.ProtocolUDP},
 								},
 							}},
 						}

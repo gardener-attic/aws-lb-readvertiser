@@ -16,9 +16,9 @@ The Load Balancer Readvertiser is a tool that is used for [Shoot clusters](https
 -resync-period duration
     the period at which the controller sync with the cache will happen (default 30m0s)
 -service-name string
-    Name of the service of type Loabalancer (default "kube-apiserver")
+    Name of the service of type Loadbalancer (default "kube-apiserver")
 -service-namespace string
-    Namespace of the service of type Loabalancer
+    Namespace of the service of type Loadbalancer
 -shoot-kubeconfig string
     Paths to a shoot's kubeconfig. Required.
 -endpoint-name string

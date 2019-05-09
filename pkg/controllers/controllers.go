@@ -34,7 +34,6 @@ import (
 
 // AddControllers adds all controllers to the controller manager
 func AddControllers(mgr manager.Manager, ops *options.ReadvertiserOptions) error {
-
 	log := logf.Log.WithName("entrypoint")
 	shootClient := kubernetes.NewForConfigOrDie(ops.ShootKubeConfig)
 	seedClient := kubernetes.NewForConfigOrDie(ops.SeedKubeConfig)
@@ -76,7 +75,7 @@ func AddControllers(mgr manager.Manager, ops *options.ReadvertiserOptions) error
 		return err
 	}
 
-	endpointNN := types.NamespacedName{Name: ops.EndpointName, Namespace: ops.EndpointNamespace}
+	endpointNamespacedName := types.NamespacedName{Name: ops.EndpointName, Namespace: ops.EndpointNamespace}
 	c, err := controller.New("readvertiser-controller", mgr, controller.Options{
 		Reconciler: readvertiser.NewReconciler(
 			shootClient.CoreV1().Endpoints(ops.EndpointNamespace),
@@ -84,7 +83,7 @@ func AddControllers(mgr manager.Manager, ops *options.ReadvertiserOptions) error
 			serviceInformer.Lister().Services(ops.ServiceNamespace),
 			endpointsInformer.Lister().Endpoints(ops.EndpointNamespace),
 			ops.ServiceName,
-			endpointNN,
+			endpointNamespacedName,
 			ops.HostnameRefreshPeriod,
 			resolver.Default,
 		),
@@ -100,17 +99,17 @@ func AddControllers(mgr manager.Manager, ops *options.ReadvertiserOptions) error
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(
 				func(a handler.MapObject) []reconcile.Request {
-					return []reconcile.Request{{NamespacedName: endpointNN}}
+					return []reconcile.Request{{NamespacedName: endpointNamespacedName}}
 				}),
 		}); err != nil {
-		log.Error(err, "unable to create watch")
+		log.Error(err, "unable to create watch for services")
 		return err
 	}
 
 	if err := c.Watch(
 		&source.Informer{Informer: endpointsInformer.Informer()},
 		&handler.EnqueueRequestForObject{}); err != nil {
-		log.Error(err, "unable to create watch")
+		log.Error(err, "unable to create watch for endpoints")
 		return err
 	}
 

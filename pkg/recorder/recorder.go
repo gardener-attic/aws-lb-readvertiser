@@ -10,7 +10,6 @@ import (
 )
 
 type provider struct {
-	// scheme to specify when creating a recorder
 	// eventBroadcaster to create new recorder instance
 	eventBroadcaster record.EventBroadcaster
 	// logger is the logger to use when logging diagnostic event info

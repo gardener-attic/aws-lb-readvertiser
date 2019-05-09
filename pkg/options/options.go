@@ -58,15 +58,14 @@ func (r *ReadvertiserOptions) Parse() error {
 
 	flag.Parse()
 
-	if len(shootKubeConfig) > 0 {
-		conf, err := clientcmd.BuildConfigFromFlags("", shootKubeConfig)
-		if err != nil {
-			return fmt.Errorf("unable to set up seed client config: %v", err)
-		}
-		r.ShootKubeConfig = conf
-	} else {
+	if len(shootKubeConfig) == 0 {
 		return fmt.Errorf("shoot-kubeconfig is required")
 	}
+	conf, err := clientcmd.BuildConfigFromFlags("", shootKubeConfig)
+	if err != nil {
+		return fmt.Errorf("unable to set up seed client config: %v", err)
+	}
+	r.ShootKubeConfig = conf
 	r.ShootKubeConfig.UserAgent = userAgent
 
 	if len(r.ServiceName) == 0 {
