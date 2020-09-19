@@ -1,5 +1,7 @@
 # AWS Load Balancer Readvertiser
 
+[![reuse compliant](https://reuse.software/badge/reuse-compliant.svg)](https://reuse.software/)
+
 The AWS Load Balancer Readvertiser is a tool that is used for AWS [Shoot clusters](https://github.com/gardener/documentation/wiki/Architecture). The `kube-apiserver` of a Shoot cluster must be reachable by the `kubernetes` service in the `default` namespace (usually created with service ip `100.64.0.1`). In order to enable that, the apiserver must expose its public ip address. In the Shoot setup, the only way to reach it is via a public load balancer. However, in AWS you don't get an IP address for your load balancers, but only a hostname. The underlying IP address can change at any time. The detection of those changes is exactly the purpose of the Readvertiser. It will watch for the ELB record changes and update the `kubernetes` endpoint of the shoot-cluster with the correct IP(s) properly.
 
 ## Constraints
