@@ -1,0 +1,153 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Gardener aws-lb-readvertiser
+Upstream-Contact: The Gardener project <gardener@googlegroups.com>
+Source: https://github.com/gardener/aws-lb-readvertiser
+
+# --------------------------------------------------
+# source code
+
+Files:
+  .github/*
+  .gitignore
+  CODEOWNERS
+  Gopkg.lock
+  Gopkg.toml
+  VERSION
+Copyright: 2017-2020 SAP SE or an SAP affiliate company and Gardener contributors
+License: Apache-2.0
+
+# --------------------------------------------------
+# documentation
+
+Files:
+  CONTRIBUTING.md
+  README.md
+Copyright: 2017-2020 SAP SE or an SAP affiliate company and Gardener contributors
+License: CC-BY-4.0
+
+# --------------------------------------------------
+# dependencies
+
+Files: vendor/github.com/davecgh/go-spew/*
+Copyright: 2012-2016 Dave Collins
+License: ISC
+
+Files: vendor/github.com/ghodss/yaml/*
+Copyright: 2014 Sam Ghods
+Copyright: 2012 The Go Authors
+License: MIT and BSD-3-Clause
+
+Files: vendor/github.com/gogo/protobuf/*
+Copyright: 2013, The GoGo Authors
+Copyright: 2010 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/github.com/golang/glog/*
+Copyright: 2013 Google Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/golang/protobuf/*
+Copyright: 2010 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/github.com/google/btree/*
+Copyright: Google Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/google/gofuzz/*
+Copyright: 2014 Google Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/googleapis/gnostic/*
+Copyright: 2017 Google Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/gregjones/httpcache/*
+Copyright: 2012 Greg Jones (greg.jones@gmail.com)
+License: MIT
+
+Files: vendor/github.com/hashicorp/golang-lru/*
+Copyright: Armon Dadgar, HashiCorp
+License: MPL-2.0
+
+Files: vendor/github.com/imdario/mergo/*
+Copyright: 2013 Dario Castane
+Copyright: 2012 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/github.com/json-iterator/go/*
+Copyright: 2016 json-iterator
+License: MIT
+
+Files: vendor/github.com/konsorten/go-windows-terminal-sequences/*
+Copyright: 2017 marvin + konsorten GmbH (open-source@konsorten.de)
+License: MIT
+
+Files: vendor/github.com/modern-go/concurrent/*
+Copyright: 2018 Tao Wen
+License: Apache-2.0
+
+Files: vendor/github.com/modern-go/reflect2/*
+Copyright: 2018 Tao Wen
+License: Apache-2.0
+
+Files: vendor/github.com/petar/GoLLRB/*
+Copyright: 2010, Petar Maymounkov
+License: BSD-3-Clause
+
+Files: vendor/github.com/peterbourgon/diskv/*
+Copyright: Copyright (c) 2011-2012 Peter Bourgon
+License: MIT
+
+Files: vendor/github.com/sirupsen/logrus/*
+Copyright: 2014 Simon Eskildsen
+License: MIT
+
+Files: vendor/github.com/spf13/pflag/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/crypto/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/net/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/sys/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/text/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/time/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/gopkg.in/inf.v0/*
+Copyright: 2012 Peter Suranyi
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/gopkg.in/yaml.v2/*
+Copyright: 2006 Kirill Simonov
+License: Apache-2.0
+
+Files: vendor/k8s.io/api/*
+Copyright: 2017 The Kubernetes Authors
+License: Apache-2.0
+
+Files: vendor/k8s.io/apimachinery/*
+Copyright: 2014 The Kubernetes Authors
+License: Apache-2.0
+
+Files: vendor/k8s.io/client-go/*
+Copyright: 2014 The Kubernetes Authors
+License: Apache-2.0
+
+Files: vendor/k8s.io/kube-openapi/*
+Copyright: 2017 The Kubernetes Authors
+License: Apache-2.0
