@@ -53,7 +53,7 @@ func NewAWSLBEndpointsController(client kubernetes.Interface, endpointsInformer 
 	return awsLBReadvertiserController
 }
 
-func (c *AWSLBReadvertiserController) createTwoWayEndpointMergePatch(endpoint *corev1.Endpoints, dnsRecords []string) (*corev1.EndpointSubset, error) {
+func (c *AWSLBReadvertiserController) applyTwoWayEndpointMergePatch(ctx context.Context, endpoint *corev1.Endpoints, dnsRecords []string) (*corev1.EndpointSubset, error) {
 	endpointCopy := endpoint.DeepCopy()
 
 	endpoints, err := createEndpointSubsetObjectFromRecords(dnsRecords)
@@ -80,7 +80,7 @@ func (c *AWSLBReadvertiserController) createTwoWayEndpointMergePatch(endpoint *c
 		return nil, fmt.Errorf("failed to patch bytes")
 	}
 
-	_, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Patch(endpoint.Name, types.StrategicMergePatchType, patchBytes)
+	_, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Patch(ctx, endpoint.Name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update endpoint with new value: %s", err.Error())
 	}
@@ -125,12 +125,12 @@ func (c *AWSLBReadvertiserController) Run(ctx context.Context, refreshTicker *ti
 					return fmt.Errorf("%s warning: could not resolve the DNS name of the elb: %v", time.Now(), err)
 				}
 
-				endpoint, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Create(&corev1.Endpoints{
+				endpoint, err = c.client.CoreV1().Endpoints(metav1.NamespaceDefault).Create(ctx, &corev1.Endpoints{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: endpointName,
 					},
 					Subsets: []corev1.EndpointSubset{*endpointSubset},
-				})
+				}, metav1.CreateOptions{})
 				if err != nil {
 					return fmt.Errorf("%s warning: could not create the kubernetes endpoint : %v", time.Now(), err)
 				}
@@ -155,7 +155,7 @@ func (c *AWSLBReadvertiserController) Run(ctx context.Context, refreshTicker *ti
 			// handle the case where endpoint exists but has no subsets
 			if len(endpoint.Subsets) == 0 {
 				log.Infof("Found empty %s endpoint, adding correct LB IPs", endpointName)
-				endpoints, err := c.createTwoWayEndpointMergePatch(endpoint, dnsRecords)
+				endpoints, err := c.applyTwoWayEndpointMergePatch(ctx, endpoint, dnsRecords)
 				if err != nil {
 					log.Error(err)
 					break
@@ -166,7 +166,7 @@ func (c *AWSLBReadvertiserController) Run(ctx context.Context, refreshTicker *ti
 				}
 				log.Infof("New endpoint IPs are %q, ELB IPs are %s", newEndpointAddresses, dnsRecords)
 			} else {
-				// Endpoint exists but with the possiblity of outdated IPs
+				// Endpoint exists but with the possibility of outdated IPs
 				endpointIPs, err = fetchEndpointIPsFromAddresses(endpoint.Subsets[0].Addresses)
 				if err != nil {
 					log.Error(err)
@@ -182,7 +182,7 @@ func (c *AWSLBReadvertiserController) Run(ctx context.Context, refreshTicker *ti
 
 				log.Info("ELB records changed, reconciling cluster endpoint to match")
 
-				endpoints, err := c.createTwoWayEndpointMergePatch(endpoint, dnsRecords)
+				endpoints, err := c.applyTwoWayEndpointMergePatch(ctx, endpoint, dnsRecords)
 				if err != nil {
 					log.Error(err)
 					break
