@@ -23,9 +23,9 @@ aws-lb-readvertiser:
             image: 'eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser'
     steps:
       check:
-        image: 'golang:1.9.4'
+        image: 'golang:1.15'
       build:
-        image: 'golang:1.9.4'
+        image: 'golang:1.15'
         output_dir: 'binary'
   jobs:
     head-update:
