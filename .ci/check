@@ -31,9 +31,6 @@ if [[ "${SOURCE_PATH}" != *"src/github.com/gardener/aws-lb-readvertiser" ]]; the
   export PATH="${GOBIN}:${PATH}"
 fi
 
-# Install Golint (linting tool).
-go get -u github.com/golang/lint/golint
-
 ###############################################################################
 
 PACKAGES="$(go list -e ./... | grep -vE '/tmp/|/vendor/')"
@@ -44,6 +41,12 @@ go vet ${PACKAGES}
 
 # Execute automatic code formatting directive.
 go fmt ${PACKAGES}
+
+# Run tests
+go test ./...
+
+# Install Golint (linting tool).
+go get -u golang.org/x/lint/golint
 
 # Execute lint checks.
 for package in ${LINT_FOLDERS}; do

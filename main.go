@@ -53,7 +53,7 @@ func (a *AWSReadvertiserOptions) validateFlags() error {
 	}
 
 	if a.refreshPeriod == 0 {
-		log.Infof("The referesh period was not set, using default %d", a.refreshPeriod)
+		log.Infof("The refresh period was not set, using default %d", a.refreshPeriod)
 		return nil
 	}
 

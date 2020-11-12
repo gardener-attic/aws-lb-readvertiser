@@ -17,10 +17,11 @@ type port struct {
 	port           int
 }
 
-// checks to see if the IPs behind the loadbalancers didn't change and that the current values of the endpoints are conformant with these records.
+// checks if the IPs behind the loadbalancers match the current values of the endpoints exactly
 func checkEndpointIsStillValid(currentEndpointValues []string, elbFetchedRecords []string) bool {
 	currentEndpoints := sets.NewString(currentEndpointValues...)
-	return currentEndpoints.HasAll(elbFetchedRecords...)
+	fetchedRecords := sets.NewString(elbFetchedRecords...)
+	return currentEndpoints.Equal(fetchedRecords)
 }
 
 // createEndpointSubset creates an endpoint subset from a set of IPs and currently with a constant port 443
