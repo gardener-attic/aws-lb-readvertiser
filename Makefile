@@ -11,7 +11,8 @@ IMAGE_TAG        := $(shell cat VERSION)
 
 .PHONY: revendor
 revendor:
-	@dep ensure -update
+	@go mod tidy
+	@go mod vendor
 
 .PHONY: build
 build:
