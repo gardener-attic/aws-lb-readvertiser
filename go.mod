@@ -1,6 +1,6 @@
 module github.com/gardener/aws-lb-readvertiser
 
-go 1.17
+go 1.18
 
 require (
 	github.com/onsi/ginkgo v1.14.2
