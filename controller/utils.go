@@ -12,11 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-type port struct {
-	name, protocol string
-	port           int
-}
-
 // checks if the IPs behind the loadbalancers match the current values of the endpoints exactly
 func checkEndpointIsStillValid(currentEndpointValues []string, elbFetchedRecords []string) bool {
 	currentEndpoints := sets.NewString(currentEndpointValues...)
