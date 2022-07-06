@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM alpine:3.15.4
-
-RUN apk add --update bash curl
+FROM gcr.io/distroless/static-debian11:nonroot
 
 ADD ./bin/rel/aws-lb-readvertiser /aws-lb-readvertiser
 
