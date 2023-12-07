@@ -9,6 +9,9 @@ aws-lb-readvertiser:
         preprocess:
           'inject-commit-hash'
         inject_effective_version: true
+      component_descriptor:
+        component_name: 'github.com/gardener/aws-lb-readvertiser'
+        ocm_repository: europe-docker.pkg.dev/gardener-project/snapshots
       publish:
         dockerimages:
           aws-lb-readvertiser:
@@ -17,7 +20,7 @@ aws-lb-readvertiser:
                 source: ~ # default
               steps:
                 build: ~
-            image: 'eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser'
+            image: europe-docker.pkg.dev/gardener-project/snapshots/gardener/aws-lb-readvertiser
     steps:
       check:
         image: 'golang:1.19.4'
@@ -28,7 +31,9 @@ aws-lb-readvertiser:
     head-update:
       traits:
         draft_release: ~
-        component_descriptor: ~
+        component_descriptor:
+          ocm_repository_mappings:
+            - repository: europe-docker.pkg.dev/gardener-project/releases
     pull-request:
       traits:
         pull-request: ~
@@ -36,7 +41,11 @@ aws-lb-readvertiser:
       traits:
         version:
           preprocess: 'finalize'
+        publish:
+          dockerimages:
+            aws-lb-readvertiser:
+              image: europe-docker.pkg.dev/gardener-project/releases/gardener/aws-lb-readvertiser
         release:
           nextversion: 'bump_minor'
         component_descriptor:
-          component_name: 'github.com/gardener/aws-lb-readvertiser'
+          ocm_repository: europe-docker.pkg.dev/gardener-project/releases

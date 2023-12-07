@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-IMAGE_REPOSITORY              := eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser
+IMAGE_REPOSITORY              := europe-docker.pkg.dev/gardener-project/public/gardener/aws-lb-readvertiser
 IMAGE_TAG                     := $(shell cat VERSION)
 GOLANGCI_LINT_CONFIG_FILE     := "./.golangci.yaml"
 REPO_ROOT                     := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
