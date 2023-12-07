@@ -3,9 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 aws-lb-readvertiser:
-  template: 'default'
   base_definition:
-    repo: ~
     traits:
       version:
         preprocess:
@@ -19,7 +17,6 @@ aws-lb-readvertiser:
                 source: ~ # default
               steps:
                 build: ~
-            registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser'
     steps:
       check:
