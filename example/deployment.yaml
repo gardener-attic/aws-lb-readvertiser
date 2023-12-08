@@ -71,7 +71,7 @@ spec:
         operator: Exists
       containers:
       - name: aws-lb-readvertiser
-        image: eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser:0.4.0
+        image: europe-docker.pkg.dev/gardener-project/public/gardener/aws-lb-readvertiser:0.4.0
         imagePullPolicy: IfNotPresent
         args:
         - --kubeconfig=/var/lib/aws-lb-readvertiser/kubeconfig

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-IMAGE_REPOSITORY              := eu.gcr.io/gardener-project/gardener/aws-lb-readvertiser
+IMAGE_REPOSITORY              := europe-docker.pkg.dev/gardener-project/public/gardener/aws-lb-readvertiser
 IMAGE_TAG                     := $(shell cat VERSION)
 GOLANGCI_LINT_CONFIG_FILE     := "./.golangci.yaml"
 REPO_ROOT                     := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -13,7 +13,7 @@ REPO_ROOT                     := $(shell dirname $(realpath $(lastword $(MAKEFIL
 .PHONY: install-requirements
 install-requirements:
 	# install golangci-lint
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
 .PHONY: revendor
 revendor:
