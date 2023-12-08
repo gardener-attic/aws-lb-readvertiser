@@ -13,7 +13,7 @@ REPO_ROOT                     := $(shell dirname $(realpath $(lastword $(MAKEFIL
 .PHONY: install-requirements
 install-requirements:
 	# install golangci-lint
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.2
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
 .PHONY: revendor
 revendor:
